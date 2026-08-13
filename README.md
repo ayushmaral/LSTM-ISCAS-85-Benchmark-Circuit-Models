@@ -32,44 +32,35 @@ On every circuit for which a prior baseline exists, the model improves on it sub
 
 ---
 
-## What changed relative to the baseline models
-
-**1. The readout fix.** The baseline read out `hn[-1]`, which for a bidirectional LSTM is the *backward* direction of the last layer only — the forward pass is trained but never read, wasting half the model. The corrected readout concatenates both directions:
-
-```python
-_, (hn, _) = self.lstm(x)
-h = torch.cat([hn[-2], hn[-1]], dim=1)   # last layer, both directions
-return self.fc(h)
-```
-
-**2. Full-data training via a vectorized parser.** Don't-care expansion is performed with NumPy array operations rather than pure Python — identical semantics, roughly 50–100× faster — which makes it practical to train on every available sample instead of a capped subset. The largest file (c7552, 8.58M samples) parses in under two minutes.
-
-**3. Training-loop robustness.** Best-checkpoint retention, `ReduceLROnPlateau` on validation accuracy, gradient clipping at 1.0, and a **divergence guard** that restores the best checkpoint with a fresh optimizer at half the learning rate if validation accuracy collapses. The guard was added after a gradient explosion on c6288 destroyed a run and the plateau scheduler then annealed the learning rate to 1.5e-8, freezing 74 epochs at 15% accuracy.
-
-**4. c17 multi-label collapse.** In the multi-label formulation (each pattern labelled with the *set* of faults it detects), the original model predicted **0 positives out of 64** — its reported 0.8182 element-wise accuracy is below the all-zeros baseline of 0.8295 for that metric, and macro-F1 was 0.0000. Fixed with a joint-pattern input, the corrected readout, `BCEWithLogitsLoss`, and no dropout: macro-F1 **0.8508**, exact-match **0.6250**.
-
----
 
 ## Repository contents
 
 ```
-notebooks/
-  LSTM_c17_kfold.ipynb              # 5-fold CV (multiclass) — use this for c17 reporting
-  LSTM_c17_multilabel_improved.ipynb# multi-label formulation
-  LSTM_c432.ipynb
-  LSTM_c499.ipynb
-  LSTM_c880.ipynb
-  LSTM_c1355.ipynb
-  LSTM_c1908.ipynb
-  LSTM_c2670.ipynb
-  LSTM_c3540.ipynb
-  LSTM_c5315.ipynb
-  LSTM_c6288.ipynb
-  LSTM_c7552.ipynb
+
+LSTM_c17_kfold.ipynb              # 5-fold CV (multiclass) — use this for c17 reporting
+LSTM_c17_multilabel_improved.ipynb# multi-label formulation
+LSTM_c432.ipynb
+LSTM_c499.ipynb
+LSTM_c880.ipynb
+LSTM_c1355.ipynb
+LSTM_c1908.ipynb
+LSTM_c2670.ipynb
+LSTM_c3540.ipynb
+LSTM_c5315.ipynb
+LSTM_c6288.ipynb
+LSTM_c7552.ipynb
 circuits/                           # Atalanta-generated .test files
-report/
-  fault_prediction_report.tex/.pdf  # full write-up
-  results_tables_figures.tex/.pdf   # LaTeX tables and figures
+  c17.test
+  c432.test
+  c499.test
+  c880.test
+  c1355.test
+  c1908.test
+  c2670.test
+  c3540.test
+  c5315.test
+  c6288.test
+  c7552.test
 ```
 
 Each notebook is self-contained: parsing, dataset construction, model, training loop, and plots.
